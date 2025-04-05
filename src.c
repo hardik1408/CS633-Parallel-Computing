@@ -1,25 +1,35 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "mpi.c"
 
 int main(int agc, char *argv[])
 {
-    int global_rank, global_size;
-    char file_name[100];
-    strncpy(file_name,argv[1],sizeof(file_name)-1);
-    file_name[sizeof(file_name) - 1] = '\0';
-    printf("%s",file_name);
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    double stime1 , stime2 , stime3 , stime4;
+    double etime1 , etime2 , etime3 , etime4;
+    // file read and data distribution
+    stime1 = MPI_Wtime();
 
-    FILE *file_ptr;
-    char str[50];
-    file_ptr = fopen(file_name,"r");
+    etime1 = MPI_Wtime();
 
-    while(fgets(str,50,file_ptr)!=NULL)
-    {
-        printf("%s",str);
-    }
+    // main code
+    stime2 = MPI_Wtime();
 
-    fclose(file_ptr);
+    etime2 = MPI_Wtime();
 
+
+    // output
+    stime3 = MPI_Wtime();
+
+    etime3 = MPI_Wtime();
+
+    
+    // finalize
+    stime4 = MPI_Wtime();
+
+    etime4 = MPI_Wtime();
+    MPI_Finalize();
     return 0;
 }
