@@ -61,32 +61,3 @@ The output file contains:
 2. Local minima and maxima counts for each time step
 3. Global minima and maxima values for each time step
 4. Timing information (initialization, computation, total execution time)
-
-## Running Tests
-
-A test script is provided to run the program with different process configurations:
-
-```bash
-chmod +x run_test.sh
-./run_test.sh
-```
-
-This will:
-1. Compile the program
-2. Create a small test input file
-3. Run the program with different process configurations
-4. Save the results in the test_data directory
-
-## Constraints
-
-- PX ≥ 1, PY ≥ 1, PZ ≥ 1
-- NX ≤ 1024, NY ≤ 1024, NZ ≤ 1024
-- NC ≤ 1000
-- PX × PY × PZ must equal the total number of processes
-
-## Performance Considerations
-
-- The program uses a 3D domain decomposition to minimize communication overhead
-- Each process only processes its own sub-domain
-- Communication is minimized by having process 0 distribute the data once at the beginning
-- Results are gathered at the end using efficient MPI_Reduce operations
