@@ -9,6 +9,7 @@ int main(int agc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
     double stime1 , stime2 , stime3 , stime4;
     double etime1 , etime2 , etime3 , etime4;
+    double total_time;
     int px, py, pz;
     int nx, ny, nz;
     int nc;
@@ -26,6 +27,7 @@ int main(int agc, char *argv[])
     nz = atoi(argv[7]);
     nc = atoi(argv[8]);
     output_file = argv[9];
+
     // file read and data distribution
     stime1 = MPI_Wtime();
 
