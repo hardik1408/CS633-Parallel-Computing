@@ -13,10 +13,10 @@ int main(int agc, char *argv[])
     int nx, ny, nz;
     int nc;
     int input_file_size = argv[1]/sizeof(char);
-    int output_file_size = argv[1]/sizeof(char);
+    int output_file_size = argv[9]/sizeof(char);
     char *input_file = (char *)malloc(input_file_size);
     char *output_file = (char *)malloc(output_file_size);
-    
+
     input_file = argv[1];
     px = atoi(argv[2]);
     py = atoi(argv[3]);
