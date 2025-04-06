@@ -73,9 +73,6 @@ int main(int argc, char **argv) {
     int offset_y = (NY / PY) * py + (py < NY % PY ? py : NY % PY);
     int offset_z = (NZ / PZ) * pz + (pz < NZ % PZ ? pz : NZ % PZ);
 
-    if(rank==0)
-        printf("Problem Parameters: NX=%d, NY=%d, NZ=%d, NC=%d, PX=%d, PY=%d, PZ=%d\n",
-               NX, NY, NZ, NC, PX, PY, PZ);
 
     // Rank 0 reads full data.
     float *full_data = NULL;
@@ -266,34 +263,34 @@ int main(int argc, char **argv) {
                     int isMin = 1, isMax = 1;
                     // Check 6 face-neighbors only.
                     // Left: (x-1, y, z)
-                    if(ext_data[IDX(x-1, y, z, ext_nx, ext_ny) * NC + t] < val)
+                    if(ext_data[IDX(x-1, y, z, ext_nx, ext_ny) * NC + t] <= val)
                         isMin = 0;
-                    if(ext_data[IDX(x-1, y, z, ext_nx, ext_ny) * NC + t] > val)
+                    if(ext_data[IDX(x-1, y, z, ext_nx, ext_ny) * NC + t] >= val)
                         isMax = 0;
                     // Right: (x+1, y, z)
-                    if(ext_data[IDX(x+1, y, z, ext_nx, ext_ny) * NC + t] < val)
+                    if(ext_data[IDX(x+1, y, z, ext_nx, ext_ny) * NC + t] <= val)
                         isMin = 0;
-                    if(ext_data[IDX(x+1, y, z, ext_nx, ext_ny) * NC + t] > val)
+                    if(ext_data[IDX(x+1, y, z, ext_nx, ext_ny) * NC + t] >= val)
                         isMax = 0;
                     // Bottom: (x, y-1, z)
-                    if(ext_data[IDX(x, y-1, z, ext_nx, ext_ny) * NC + t] < val)
+                    if(ext_data[IDX(x, y-1, z, ext_nx, ext_ny) * NC + t] <= val)
                         isMin = 0;
-                    if(ext_data[IDX(x, y-1, z, ext_nx, ext_ny) * NC + t] > val)
+                    if(ext_data[IDX(x, y-1, z, ext_nx, ext_ny) * NC + t] >= val)
                         isMax = 0;
                     // Top: (x, y+1, z)
-                    if(ext_data[IDX(x, y+1, z, ext_nx, ext_ny) * NC + t] < val)
+                    if(ext_data[IDX(x, y+1, z, ext_nx, ext_ny) * NC + t] <= val)
                         isMin = 0;
-                    if(ext_data[IDX(x, y+1, z, ext_nx, ext_ny) * NC + t] > val)
+                    if(ext_data[IDX(x, y+1, z, ext_nx, ext_ny) * NC + t] >= val)
                         isMax = 0;
                     // Front: (x, y, z-1)
-                    if(ext_data[IDX(x, y, z-1, ext_nx, ext_ny) * NC + t] < val)
+                    if(ext_data[IDX(x, y, z-1, ext_nx, ext_ny) * NC + t] <= val)
                         isMin = 0;
-                    if(ext_data[IDX(x, y, z-1, ext_nx, ext_ny) * NC + t] > val)
+                    if(ext_data[IDX(x, y, z-1, ext_nx, ext_ny) * NC + t] >= val)
                         isMax = 0;
                     // Back: (x, y, z+1)
-                    if(ext_data[IDX(x, y, z+1, ext_nx, ext_ny) * NC + t] < val)
+                    if(ext_data[IDX(x, y, z+1, ext_nx, ext_ny) * NC + t] <= val)
                         isMin = 0;
-                    if(ext_data[IDX(x, y, z+1, ext_nx, ext_ny) * NC + t] > val)
+                    if(ext_data[IDX(x, y, z+1, ext_nx, ext_ny) * NC + t] >= val)
                         isMax = 0;
                     
                     if(isMin) local_min_count[t]++;
@@ -326,27 +323,23 @@ int main(int argc, char **argv) {
             printf("Error: Could not open output file %s\n", output_file);
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
-        fprintf(fout, "Problem Parameters:\n");
-        fprintf(fout, "NX: %d, NY: %d, NZ: %d, NC: %d\n", NX, NY, NZ, NC);
-        fprintf(fout, "Process Grid: PX: %d, PY: %d, PZ: %d, Total Processes: %d\n\n", PX, PY, PZ, size);
-        fprintf(fout, "Local Minima and Maxima Counts (6-neighbor check) for Each Time Step:\n");
-        fprintf(fout, "Time Step | Local Minima | Local Maxima\n");
-        fprintf(fout, "----------------------------------------\n");
-        for (int t = 0; t < NC; t++) {
-            fprintf(fout, "%9d | %12d | %12d\n", t, global_min_count[t], global_max_count[t]);
+
+        for(int i = 0; i<NC; i++)
+        {
+            fprintf(fout, "(%d,%d) ", global_min_count[i], global_max_count[i]);
+            if(i!=NC-1)
+                fprintf(fout, ", ");
         }
         fprintf(fout, "\n");
-        fprintf(fout, "Global Minima and Maxima for Each Time Step:\n");
-        fprintf(fout, "Time Step | Global Min | Global Max\n");
-        fprintf(fout, "----------------------------------------\n");
-        for (int t = 0; t < NC; t++) {
-            fprintf(fout, "%9d | %10.6f | %10.6f\n", t, global_min_vals[t], global_max_vals[t]);
+        
+        for(int i = 0; i<NC; i++)
+        {
+            fprintf(fout, "(%.6f,%.6f) ", global_min_vals[i], global_max_vals[i]);
+            if(i!=NC-1)
+                fprintf(fout, ", ");
         }
         fprintf(fout, "\n");
-        fprintf(fout, "Timing Information:\n");
-        fprintf(fout, "Data Distribution Time: %.6f seconds\n", t2-t1);
-        fprintf(fout, "Computation Time: %.6f seconds\n", t3-t2);
-        fprintf(fout, "Total Execution Time: %.6f seconds\n", t3-t1);
+        fprintf(fout, "%.6f %.6f %.6f\n", t2-t1, t3-t2, t3-t1);
         fclose(fout);
         
         free(global_min_count);
