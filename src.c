@@ -73,7 +73,6 @@ int main(int argc, char **argv) {
     int offset_y = (NY / PY) * py + (py < NY % PY ? py : NY % PY);
     int offset_z = (NZ / PZ) * pz + (pz < NZ % PZ ? pz : NZ % PZ);
 
-
     // Rank 0 reads full data.
     float *full_data = NULL;
     if(rank == 0) {
@@ -85,7 +84,7 @@ int main(int argc, char **argv) {
     int local_size = lx * ly * lz;
     float *local_data = (float*)malloc(sizeof(float) * local_size * NC);
 
-    // Distribute data manually.
+    // Manual distribution of data.
     for (int t = 0; t < NC; t++) {
         if(rank == 0) {
             for (int p = 0; p < size; p++) {
@@ -143,6 +142,7 @@ int main(int argc, char **argv) {
     }
     
     // Copy local_data into the center of ext_data.
+    // The interior of ext_data spans indices [1..lx] x [1..ly] x [1..lz]
     for (int t = 0; t < NC; t++) {
         for (int z = 0; z < lz; z++) {
             for (int y = 0; y < ly; y++) {
@@ -155,12 +155,12 @@ int main(int argc, char **argv) {
         }
     }
     
-    /*
+    /* 
        Perform ghost exchange for the full halo.
-       This code loops over the 26 neighbor offsets. For each neighbor that exists, it packs the corresponding
-       block from the interior (from ext_data) and exchanges it with that neighbor.
+       We loop over all 26 neighbor offsets. For each neighbor that exists, we pack the corresponding
+       block from the interior of ext_data, exchange it with that neighbor, and then place the received data
+       into the appropriate halo region in ext_data.
     */
-    
     for (int t = 0; t < NC; t++) {
         for (int dz = -1; dz <= 1; dz++) {
             for (int dy = -1; dy <= 1; dy++) {
@@ -238,9 +238,14 @@ int main(int argc, char **argv) {
         }
     }
     
-    // *** Modified local extrema computation: only check 6 face-neighbors ***
-    // For each interior cell in ext_data (i.e. corresponding to our local domain)
-    // check neighbors at (x-1,y,z), (x+1,y,z), (x,y-1,z), (x,y+1,z), (x,y,z-1), (x,y,z+1)
+    /*
+       Compute local minima and maxima (with 6-neighbor check) for all interior cells
+       and now also include cells at the boundary of the local subdomain.
+       For each cell in the interior of ext_data (indices 1..lx, 1..ly, 1..lz),
+       we compute its global coordinates and then check each of the 6 neighbors.
+       For each neighbor, if the neighbor’s global coordinate is outside the overall global domain,
+       that neighbor is skipped.
+    */
     int *local_min_count = (int*)malloc(sizeof(int) * NC);
     int *local_max_count = (int*)malloc(sizeof(int) * NC);
     float *local_min_vals = (float*)malloc(sizeof(float) * NC);
@@ -251,48 +256,47 @@ int main(int argc, char **argv) {
         local_max_count[t] = 0;
         local_min_vals[t] = FLT_MAX;
         local_max_vals[t] = -FLT_MAX;
-        
+        // Loop over all cells in our local subdomain (stored in ext_data at indices 1..lx, 1..ly, 1..lz)
         for (int z = 1; z <= lz; z++) {
             for (int y = 1; y <= ly; y++) {
                 for (int x = 1; x <= lx; x++) {
                     int ext_idx = IDX(x, y, z, ext_nx, ext_ny);
                     float val = ext_data[ext_idx * NC + t];
+                    
+                    // Compute the global coordinates of this cell.
+                    int global_x = offset_x + (x - 1);
+                    int global_y = offset_y + (y - 1);
+                    int global_z = offset_z + (z - 1);
+                    
+                    // Update our local extreme values.
                     if(val < local_min_vals[t]) local_min_vals[t] = val;
                     if(val > local_max_vals[t]) local_max_vals[t] = val;
                     
                     int isMin = 1, isMax = 1;
-                    // Check 6 face-neighbors only.
-                    // Left: (x-1, y, z)
-                    if(ext_data[IDX(x-1, y, z, ext_nx, ext_ny) * NC + t] <= val)
-                        isMin = 0;
-                    if(ext_data[IDX(x-1, y, z, ext_nx, ext_ny) * NC + t] >= val)
-                        isMax = 0;
-                    // Right: (x+1, y, z)
-                    if(ext_data[IDX(x+1, y, z, ext_nx, ext_ny) * NC + t] <= val)
-                        isMin = 0;
-                    if(ext_data[IDX(x+1, y, z, ext_nx, ext_ny) * NC + t] >= val)
-                        isMax = 0;
-                    // Bottom: (x, y-1, z)
-                    if(ext_data[IDX(x, y-1, z, ext_nx, ext_ny) * NC + t] <= val)
-                        isMin = 0;
-                    if(ext_data[IDX(x, y-1, z, ext_nx, ext_ny) * NC + t] >= val)
-                        isMax = 0;
-                    // Top: (x, y+1, z)
-                    if(ext_data[IDX(x, y+1, z, ext_nx, ext_ny) * NC + t] <= val)
-                        isMin = 0;
-                    if(ext_data[IDX(x, y+1, z, ext_nx, ext_ny) * NC + t] >= val)
-                        isMax = 0;
-                    // Front: (x, y, z-1)
-                    if(ext_data[IDX(x, y, z-1, ext_nx, ext_ny) * NC + t] <= val)
-                        isMin = 0;
-                    if(ext_data[IDX(x, y, z-1, ext_nx, ext_ny) * NC + t] >= val)
-                        isMax = 0;
-                    // Back: (x, y, z+1)
-                    if(ext_data[IDX(x, y, z+1, ext_nx, ext_ny) * NC + t] <= val)
-                        isMin = 0;
-                    if(ext_data[IDX(x, y, z+1, ext_nx, ext_ny) * NC + t] >= val)
-                        isMax = 0;
-                    
+                    // Define the 6 neighbor offsets.
+                    int d[6][3] = { {-1,0,0}, {1,0,0}, {0,-1,0}, {0,1,0}, {0,0,-1}, {0,0,1} };
+                    for (int i = 0; i < 6; i++) {
+                        int dx = d[i][0], dy = d[i][1], dz = d[i][2];
+                        int nb_global_x = global_x + dx;
+                        int nb_global_y = global_y + dy;
+                        int nb_global_z = global_z + dz;
+                        // Check if neighbor exists in the global domain.
+                        if(nb_global_x < 0 || nb_global_x >= NX ||
+                           nb_global_y < 0 || nb_global_y >= NY ||
+                           nb_global_z < 0 || nb_global_z >= NZ)
+                        {
+                            continue; // Skip comparison if neighbor is out-of-bound.
+                        }
+                        // Compute the neighbor's index in the extended array.
+                        // Since interior cell (global) corresponds to ext_data index = local index + 1:
+                        int nb_ext_x = x + dx;
+                        int nb_ext_y = y + dy;
+                        int nb_ext_z = z + dz;
+                        int nb_ext_idx = IDX(nb_ext_x, nb_ext_y, nb_ext_z, ext_nx, ext_ny);
+                        float nb_val = ext_data[nb_ext_idx * NC + t];
+                        if(nb_val < val) isMin = 0;
+                        if(nb_val > val) isMax = 0;
+                    }
                     if(isMin) local_min_count[t]++;
                     if(isMax) local_max_count[t]++;
                 }
