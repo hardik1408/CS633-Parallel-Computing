@@ -352,7 +352,7 @@ int main(int argc, char **argv) {
         free(global_min_vals);
         free(global_max_vals);
     }
-    
+    printf("%f\n", t3-t1);
     free(local_data);
     free(ext_data);
     free(local_min_count);
