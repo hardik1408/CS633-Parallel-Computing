@@ -294,8 +294,8 @@ int main(int argc, char **argv) {
                         int nb_ext_z = z + dz;
                         int nb_ext_idx = IDX(nb_ext_x, nb_ext_y, nb_ext_z, ext_nx, ext_ny);
                         float nb_val = ext_data[nb_ext_idx * NC + t];
-                        if(nb_val < val) isMin = 0;
-                        if(nb_val > val) isMax = 0;
+                        if(nb_val <= val) isMin = 0;
+                        if(nb_val >= val) isMax = 0;
                     }
                     if(isMin) local_min_count[t]++;
                     if(isMax) local_max_count[t]++;
