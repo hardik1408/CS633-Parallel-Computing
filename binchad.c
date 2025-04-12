@@ -191,9 +191,15 @@ int main(int argc, char **argv) {
                         }
                     }
                     
-                    MPI_Sendrecv(sendbuf, block_size * NC, MPI_FLOAT, nbr, 100,
-                                 recvbuf, block_size * NC, MPI_FLOAT, nbr, 100,
-                                 MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    MPI_Request send_req, recv_req;
+                    MPI_Isend(sendbuf, block_size * NC, MPI_FLOAT, nbr, 100,
+                             MPI_COMM_WORLD, &send_req);
+                    MPI_Irecv(recvbuf, block_size * NC, MPI_FLOAT, nbr, 100,
+                             MPI_COMM_WORLD, &recv_req);
+                    
+                    // Wait for both operations to complete
+                    MPI_Request requests[2] = {send_req, recv_req};
+                    MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
                     
                     int dest_x = (dx == -1) ? 0 : (dx == 0 ? 1 : lx + 1);
                     int dest_y = (dy == -1) ? 0 : (dy == 0 ? 1 : ly + 1);
