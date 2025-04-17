@@ -29,7 +29,7 @@ sbatch job.sh
 ```
 
 The job script and execution command accept the following parameters:
-- num_processes: Number of MPI processes (e.g., 8, 16, 32, 64), specified via \texttt{-np} in the \texttt{mpirun} command within the SLURM script.
+- num_processes: Number of MPI processes (e.g., 8, 16, 32, 64), specified via -np in the mpirun command within the SLURM script.
 - Parameters:
     - input_file: Binary file containing the input dataset (e.g., data_64_64_64_3.txt).
     - PX PY PZ: Dimensions of the process grid (e.g., 2 2 2).
