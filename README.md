@@ -22,7 +22,7 @@ To compile the program, run:
 ```bash
 make
 ```
-The program is executed on a cluster managed by SLURM. A SLURM job script (\texttt{job.sh}) is used to specify the execution parameters and submit the job. 
+The program is executed on a cluster managed by SLURM. A SLURM job script (job.sh) is used to specify the execution parameters and submit the job. 
 To submit the job, use:
 ```bash
 sbatch job.sh
